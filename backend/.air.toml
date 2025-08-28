@@ -1,0 +1,17 @@
+
+# Archivo de configuración para air
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "sh -c 'go build -o ./tmp/server ./cmd/server && chmod +x ./tmp/server'"
+bin = "tmp/server"
+full_bin = "sh -c './tmp/server'"
+include_ext = ["go"]
+exclude_dir = ["vendor"]
+include_dir = ["."]
+exclude_file = []
+log = "build-errors.log"
+
+[log]
+time = true

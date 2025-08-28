@@ -1,0 +1,20 @@
+FROM golang:1.25
+
+# Instala air (live reload)
+RUN go install github.com/air-verse/air@latest
+ENV PATH="/go/bin:$PATH"
+
+WORKDIR /app
+
+# Copiamos mod primero para cachear dependencias
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copiamos el resto
+COPY . .
+
+# Puerto de dev
+EXPOSE 5000
+
+# Ejecutar con air (busca .air.toml)
+CMD ["air", "-c", ".air.toml"]

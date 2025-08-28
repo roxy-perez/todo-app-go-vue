@@ -1,0 +1,11 @@
+# binarios
+main
+server
+tmp/
+
+# cache
+*.out
+*.log
+
+# dependencias locales
+vendor/
