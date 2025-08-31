@@ -1,72 +1,71 @@
 package project
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/v5"
+	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
-func Routes(db *gorm.DB) chi.Router {
-	r := chi.NewRouter()
-
+func RegisterRoutes(e *echo.Group, db *gorm.DB) {
 	// List all projects
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	e.GET("", func(c echo.Context) error {
 		var projects []Project
-		db.Find(&projects)
-		json.NewEncoder(w).Encode(projects)
+		if err := db.Find(&projects).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusOK, projects)
 	})
 
 	// Create a new project
-	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+	e.POST("", func(c echo.Context) error {
 		var p Project
-		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+		if err := c.Bind(&p); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 		}
-		db.Create(&p)
-		json.NewEncoder(w).Encode(p)
+		if err := db.Create(&p).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusCreated, p)
 	})
 
 	// Get one project
-	r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	e.GET("/:id", func(c echo.Context) error {
+		id, _ := strconv.Atoi(c.Param("id"))
 		var p Project
 		if err := db.First(&p, id).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
 		}
-		json.NewEncoder(w).Encode(p)
+		return c.JSON(http.StatusOK, p)
 	})
 
 	// Update a project
-	r.Put("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	e.PUT("/:id", func(c echo.Context) error {
+		id, _ := strconv.Atoi(c.Param("id"))
 		var p Project
 		if err := db.First(&p, id).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
 		}
-		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+
+		var input Project
+		if err := c.Bind(&input); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 		}
+
+		p.Name = input.Name
+		p.Description = input.Description
 		db.Save(&p)
-		json.NewEncoder(w).Encode(p)
+
+		return c.JSON(http.StatusOK, p)
 	})
 
 	// Delete a project
-	r.Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id, _ := strconv.Atoi(chi.URLParam(r, "id"))
+	e.DELETE("/:id", func(c echo.Context) error {
+		id, _ := strconv.Atoi(c.Param("id"))
 		if err := db.Delete(&Project{}, id).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
-		w.WriteHeader(http.StatusNoContent)
+		return c.NoContent(http.StatusNoContent)
 	})
-
-	return r
 }
